@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 pub struct Tokenizer {
     tokens: Vec<Token>,
+    first_advance: bool,
     cur_token_i: usize,
 }
 
@@ -13,6 +14,11 @@ struct Token {
     int_val: i32,
     string_val: String,
     comment: String,
+}
+
+enum TokenFoo {
+    Keyword { t: TokenType, keyword: String },
+    Symbol { t: TokenType, keyword: String },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -113,11 +119,12 @@ impl FromStr for Keyword {
 }
 
 impl Tokenizer {
-    pub fn new(code_contents: String) -> Tokenizer {
-        let tokens = Tokenizer::analyze(&code_contents);
+    pub fn new(code_contents: String, ignore_comments: bool) -> Tokenizer {
+        let tokens = Tokenizer::analyze(&code_contents, ignore_comments);
 
         Tokenizer {
             tokens,
+            first_advance: true,
             cur_token_i: 0,
         }
     }
@@ -127,7 +134,10 @@ impl Tokenizer {
     }
 
     pub fn advance(&mut self) {
-        self.cur_token_i += 1;
+        if !self.first_advance {
+            self.cur_token_i += 1;
+        }
+        self.first_advance = false;
     }
 
     pub fn token_type(&self) -> TokenType {
@@ -158,7 +168,7 @@ impl Tokenizer {
         self.tokens[self.cur_token_i].comment.to_owned()
     }
 
-    fn analyze(code: &str) -> Vec<Token> {
+    fn analyze(code: &str, ignore_comments: bool) -> Vec<Token> {
         let mut tokens = Vec::new();
 
         let keywords: [&str; 21] = [
@@ -208,16 +218,17 @@ impl Tokenizer {
                         cur = character_stream.next();
                         c = cur.unwrap();
                     }
-
-                    tokens.push(Token {
-                        token_type: TokenType::LineComment,
-                        keyword: Keyword::None,
-                        symbol: ' ',
-                        identifier: String::new(),
-                        int_val: 0,
-                        string_val: String::new(),
-                        comment,
-                    });
+                    if !ignore_comments {
+                        tokens.push(Token {
+                            token_type: TokenType::LineComment,
+                            keyword: Keyword::None,
+                            symbol: ' ',
+                            identifier: String::new(),
+                            int_val: 0,
+                            string_val: String::new(),
+                            comment,
+                        });
+                    }
                 } else if c == '*' {
                     let mut prev_c = ' ';
                     loop {
@@ -232,16 +243,17 @@ impl Tokenizer {
                         prev_c = c;
                         c = cur.unwrap();
                     }
-
-                    tokens.push(Token {
-                        token_type: TokenType::BlockComment,
-                        keyword: Keyword::None,
-                        symbol: ' ',
-                        identifier: String::new(),
-                        int_val: 0,
-                        string_val: String::new(),
-                        comment,
-                    });
+                    if !ignore_comments {
+                        tokens.push(Token {
+                            token_type: TokenType::BlockComment,
+                            keyword: Keyword::None,
+                            symbol: ' ',
+                            identifier: String::new(),
+                            int_val: 0,
+                            string_val: String::new(),
+                            comment,
+                        });
+                    }
                 } else {
                     tokens.push(Token {
                         token_type: TokenType::Symbol,
@@ -267,7 +279,7 @@ impl Tokenizer {
                     tokens.push(Token {
                         token_type: TokenType::Keyword,
                         keyword: Keyword::from_str(&token).unwrap_or(Keyword::None),
-                        symbol: '/',
+                        symbol: ' ',
                         identifier: String::new(),
                         int_val: 0,
                         string_val: String::new(),

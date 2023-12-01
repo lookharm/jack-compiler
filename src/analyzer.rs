@@ -1,24 +1,12 @@
+use crate::compilation_engine::CompilationEngine;
 use crate::tokenizer;
+use crate::tokenizer::Tokenizer;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::Result;
 
-pub fn analyze() -> Result<()> {
-    let args: Vec<_> = env::args().skip(1).collect();
-    if args.len() < 2 {
-        eprintln!("Usage: analyzer INPUT_PATH OUTPUT_PATH");
-        std::process::exit(1)
-    }
-
-    let in_file = &args[0];
-    let out_file = &args[1];
-
-    let mut f = File::open(in_file)?;
-    let mut contents = String::new();
-    f.read_to_string(&mut contents)?;
-    let mut tokenizer = tokenizer::Tokenizer::new(contents);
-
+fn format_tokens_xml(mut tokenizer: Tokenizer) -> String {
     let mut output: String = String::new();
     output.push_str("<tokens>\n");
 
@@ -69,8 +57,30 @@ pub fn analyze() -> Result<()> {
     }
 
     output.push_str("</tokens>\n");
-    let mut f = File::create(out_file)?;
-    f.write_all(output.as_bytes())?;
+
+    output
+}
+
+pub fn analyze() -> Result<()> {
+    let args: Vec<_> = env::args().skip(1).collect();
+    if args.len() < 2 {
+        eprintln!("Usage: analyzer INPUT_PATH OUTPUT_PATH");
+        std::process::exit(1)
+    }
+
+    let in_file = &args[0];
+    let out_file = &args[1];
+
+    let mut f = File::open(in_file)?;
+    let mut code_contents = String::new();
+    f.read_to_string(&mut code_contents)?;
+
+    let mut compilation_engine = CompilationEngine::new(code_contents);
+    compilation_engine.compile_class();
+    // let output = format_tokens_xml(tokenizer);
+
+    // let mut f = File::create(out_file)?;
+    // f.write_all(output.as_bytes())?;
 
     Ok(())
 }
